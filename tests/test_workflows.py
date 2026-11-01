@@ -84,6 +84,16 @@ def test_checks_workflow_is_unprivileged() -> None:
             assert step["with"]["persist-credentials"] is False
 
 
+def test_label_events_cannot_cancel_the_real_check_run() -> None:
+    # Regression: Dependabot labels PRs right after opening them. With one concurrency group
+    # per PR, those (skipped) label runs cancelled the in-progress code run.
+    doc = load(WORKFLOWS / "sentinel-checks.yml")
+    assert "labeled" in doc["on"]["pull_request"]["types"]
+    group = doc["concurrency"]["group"]
+    assert "github.event.pull_request.number" in group
+    assert "github.event.action == 'labeled'" in group and "github.event.label.name" in group
+
+
 def test_review_workflow_never_touches_pr_code() -> None:
     doc = load(WORKFLOWS / "sentinel-review.yml")
     assert set(doc["on"]) == {"workflow_run"}

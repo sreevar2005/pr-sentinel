@@ -13,7 +13,10 @@ permissions:
   contents: read
 
 concurrency:
-  group: sentinel-checks-${{ github.event.pull_request.number }}
+  # New commits cancel the PR's previous run. `labeled` events get their own group: bots
+  # (e.g. Dependabot) label PRs right after opening them, and those runs (skipped unless the
+  # label is the AI opt-in) must not cancel the real check run.
+  group: sentinel-checks-${{ github.event.pull_request.number }}-${{ github.event.action == 'labeled' && format('label-{0}', github.event.label.name) || 'code' }}
   cancel-in-progress: true
 
 jobs:
