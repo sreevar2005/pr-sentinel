@@ -1,0 +1,298 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="sentinel-token" content="__TOKEN__">
+<title>PR Sentinel</title>
+<style nonce="__NONCE__">
+  :root {
+    --bg: #f6f7f9; --panel: #ffffff; --text: #1d2330; --muted: #5d6676; --border: #dde1e7;
+    --accent: #2457d6; --accent-text: #ffffff; --code-bg: #f0f2f5;
+    --critical: #c62828; --high: #e65100; --medium: #b58100; --low: #1e6fd9; --info: #6b7280;
+    --ok: #1b7f3b; --bad: #c62828; --shadow: 0 1px 2px rgba(0,0,0,.06), 0 2px 8px rgba(0,0,0,.04);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0f1218; --panel: #171b23; --text: #e6e9ef; --muted: #9aa3b2; --border: #2a303b;
+      --accent: #5b8cff; --accent-text: #0b0e14; --code-bg: #10141b;
+      --critical: #ff6b6b; --high: #ff9f43; --medium: #f5c542; --low: #6ea8ff; --info: #9aa3b2;
+      --ok: #4cc27a; --bad: #ff6b6b; --shadow: none;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text);
+         font: 15px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  header { padding: 20px 24px 8px; max-width: 1100px; margin: 0 auto; }
+  header h1 { margin: 0; font-size: 24px; display: flex; align-items: center; gap: 10px; }
+  header p { margin: 4px 0 0; color: var(--muted); }
+  main { max-width: 1100px; margin: 0 auto; padding: 8px 24px 48px; display: grid; gap: 16px; }
+  .panel { background: var(--panel); border: 1px solid var(--border); border-radius: 12px;
+           padding: 18px 20px; box-shadow: var(--shadow); }
+  .panel h2 { margin: 0 0 12px; font-size: 16px; }
+  .row { display: flex; flex-wrap: wrap; gap: 20px; align-items: flex-start; }
+  fieldset { border: 0; margin: 0; padding: 0; min-width: 220px; }
+  legend { font-weight: 600; margin-bottom: 6px; font-size: 13px; color: var(--muted);
+           text-transform: uppercase; letter-spacing: .04em; }
+  label.opt { display: flex; gap: 8px; align-items: baseline; padding: 4px 0; cursor: pointer; }
+  label.opt small { display: block; color: var(--muted); font-size: 12.5px; }
+  textarea { width: 100%; min-height: 160px; margin-top: 10px; padding: 10px; border-radius: 8px;
+             border: 1px solid var(--border); background: var(--code-bg); color: var(--text);
+             font: 13px/1.45 ui-monospace, Consolas, monospace; }
+  .actions { display: flex; gap: 10px; margin-top: 14px; flex-wrap: wrap; }
+  button { border: 1px solid var(--border); background: var(--panel); color: var(--text);
+           padding: 9px 16px; border-radius: 8px; font: inherit; font-weight: 600; cursor: pointer; }
+  button.primary { background: var(--accent); color: var(--accent-text); border-color: var(--accent); }
+  button:disabled { opacity: .55; cursor: progress; }
+  .hint { color: var(--muted); font-size: 13px; margin-top: 8px; }
+  .error { color: var(--bad); font-weight: 600; margin-top: 10px; }
+  .hidden { display: none !important; }
+  .tiles { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px; }
+  .tile { border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; }
+  .tile .n { font-size: 26px; font-weight: 700; }
+  .tile .l { font-size: 12.5px; color: var(--muted); text-transform: capitalize; }
+  .tile.critical .n { color: var(--critical); } .tile.high .n { color: var(--high); }
+  .tile.medium .n { color: var(--medium); } .tile.low .n { color: var(--low); } .tile.info .n { color: var(--info); }
+  .meta { color: var(--muted); font-size: 13.5px; margin-top: 10px; }
+  .finding { border: 1px solid var(--border); border-left: 4px solid var(--info); border-radius: 10px;
+             padding: 12px 14px; margin-top: 10px; }
+  .finding.critical { border-left-color: var(--critical); } .finding.high { border-left-color: var(--high); }
+  .finding.medium { border-left-color: var(--medium); } .finding.low { border-left-color: var(--low); }
+  .finding .top { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .badge { font-size: 11.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .03em;
+           padding: 2px 8px; border-radius: 999px; color: #fff; background: var(--info); }
+  .badge.critical { background: var(--critical); } .badge.high { background: var(--high); }
+  .badge.medium { background: var(--medium); } .badge.low { background: var(--low); }
+  .chip { font-size: 12px; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--border); color: var(--muted); }
+  .chip.ai { border-color: var(--accent); color: var(--accent); }
+  .finding .title { font-weight: 600; }
+  .finding .loc { font: 12.5px ui-monospace, Consolas, monospace; color: var(--muted); margin-top: 4px; }
+  pre { background: var(--code-bg); border: 1px solid var(--border); border-radius: 8px; padding: 10px;
+        overflow-x: auto; font: 12.5px/1.45 ui-monospace, Consolas, monospace; margin: 8px 0; white-space: pre-wrap; }
+  .finding p { margin: 6px 0; }
+  .rec { font-size: 14px; } .rec b { color: var(--ok); }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th, td { text-align: left; padding: 7px 8px; border-bottom: 1px solid var(--border); }
+  th { color: var(--muted); font-weight: 600; font-size: 12.5px; text-transform: uppercase; }
+  .ok { color: var(--ok); font-weight: 600; } .bad { color: var(--bad); font-weight: 600; }
+  details summary { cursor: pointer; color: var(--muted); }
+  .filter { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 12px; }
+  .filter button { padding: 4px 10px; font-size: 13px; font-weight: 500; }
+  .filter button.on { background: var(--accent); color: var(--accent-text); border-color: var(--accent); }
+  .spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid currentColor;
+             border-right-color: transparent; border-radius: 50%; animation: spin .7s linear infinite;
+             vertical-align: -2px; margin-right: 6px; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  @media (max-width: 720px) { .tiles { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+                              header, main { padding-left: 16px; padding-right: 16px; } }
+</style>
+</head>
+<body>
+<header>
+  <h1>🛡️ PR Sentinel</h1>
+  <p>Advisory pull request review: deterministic security rules, check results, and grounded AI findings.</p>
+</header>
+<main>
+  <section class="panel">
+    <h2>What should be reviewed?</h2>
+    <div class="row">
+      <fieldset>
+        <legend>Code</legend>
+        <label class="opt"><input type="radio" name="source" value="demo" checked>
+          <span>Demo pull request<small>A deliberately risky "Add user export" PR</small></span></label>
+        <label class="opt"><input type="radio" name="source" value="local">
+          <span>My changes<small>Edits vs <code>main</code> in this folder (new files: <code>git add</code> them first)</small></span></label>
+        <label class="opt"><input type="radio" name="source" value="paste">
+          <span>Paste a diff<small>Output of <code>git diff</code> from any project</small></span></label>
+      </fieldset>
+      <fieldset>
+        <legend>AI review</legend>
+        <label class="opt"><input type="radio" name="ai" value="demo" checked>
+          <span>Demo AI<small>Scripted reply, shows how AI findings are checked (demo PR only)</small></span></label>
+        <label class="opt"><input type="radio" name="ai" value="provider">
+          <span id="providerLabel">Real AI<small id="providerHint">Uses the provider and key from your setup</small></span></label>
+        <label class="opt"><input type="radio" name="ai" value="off">
+          <span>Off<small>Rules and checks only</small></span></label>
+      </fieldset>
+    </div>
+    <textarea id="diff" class="hidden" placeholder="diff --git a/app.py b/app.py&#10;..."></textarea>
+    <div class="actions">
+      <button id="reviewBtn" class="primary">Review</button>
+      <button id="testsBtn">Run test suite</button>
+    </div>
+    <div id="error" class="error hidden"></div>
+  </section>
+
+  <section id="results" class="panel hidden">
+    <h2 id="resultsTitle">Results</h2>
+    <div id="tiles" class="tiles"></div>
+    <div id="aiMeta" class="meta"></div>
+    <div id="filter" class="filter"></div>
+    <div id="findings"></div>
+  </section>
+
+  <section id="checksPanel" class="panel hidden">
+    <h2>Checks <span class="hint">(from the PR's checks job)</span></h2>
+    <table><thead><tr><th>Check</th><th>Result</th><th>Details</th></tr></thead><tbody id="checks"></tbody></table>
+  </section>
+
+  <section id="skippedPanel" class="panel hidden">
+    <details><summary id="skippedTitle"></summary><table><tbody id="skipped"></tbody></table></details>
+  </section>
+
+  <section id="testsPanel" class="panel hidden">
+    <h2>Test suite</h2>
+    <div id="testsSummary"></div>
+    <details><summary>Full output</summary><pre id="testsOutput"></pre></details>
+  </section>
+</main>
+
+<script nonce="__NONCE__">
+"use strict";
+const TOKEN = document.querySelector('meta[name="sentinel-token"]').content;
+const SEVERITIES = ["critical", "high", "medium", "low", "info"];
+const $ = (id) => document.getElementById(id);
+let lastFindings = [];
+let activeFilter = "all";
+
+function el(tag, opts = {}, children = []) {
+  const node = document.createElement(tag);
+  if (opts.cls) node.className = opts.cls;
+  if (opts.text !== undefined) node.textContent = opts.text;  // text only, never HTML
+  for (const c of children) if (c) node.appendChild(c);
+  return node;
+}
+
+async function api(path, body) {
+  const res = await fetch(path, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "X-Sentinel-Token": TOKEN },
+    body: JSON.stringify(body || {}),
+  });
+  const data = await res.json().catch(() => ({ error: "Unexpected response from the server." }));
+  if (!res.ok) throw new Error(data.error || "Request failed.");
+  return data;
+}
+
+function selected(name) { return document.querySelector(`input[name="${name}"]:checked`).value; }
+function showError(msg) { const e = $("error"); e.textContent = msg; e.classList.toggle("hidden", !msg); }
+function busy(btn, label) {
+  btn.disabled = true; btn.dataset.label = btn.textContent;
+  btn.replaceChildren(el("span", { cls: "spinner" }), document.createTextNode(label));
+}
+function done(btn) { btn.disabled = false; btn.textContent = btn.dataset.label; }
+
+function syncControls() {
+  const source = selected("source");
+  $("diff").classList.toggle("hidden", source !== "paste");
+  const demoAi = document.querySelector('input[name="ai"][value="demo"]');
+  demoAi.disabled = source !== "demo";
+  if (demoAi.disabled && demoAi.checked) document.querySelector('input[name="ai"][value="off"]').checked = true;
+}
+document.querySelectorAll('input[name="source"]').forEach((r) => r.addEventListener("change", syncControls));
+
+function renderFindings() {
+  const box = $("findings");
+  const list = lastFindings.filter((f) => activeFilter === "all" || f.severity === activeFilter);
+  box.replaceChildren();
+  if (!list.length) { box.appendChild(el("p", { cls: "meta", text: "No findings at this level." })); return; }
+  for (const f of list) {
+    const source = { ai: "AI", rule: "Rule", check: "Check" }[f.source] || f.source;
+    const top = el("div", { cls: "top" }, [
+      el("span", { cls: `badge ${f.severity}`, text: f.severity }),
+      el("span", { cls: `chip ${f.source === "ai" ? "ai" : ""}`, text: source }),
+      el("span", { cls: "chip", text: f.category }),
+      el("span", { cls: "title", text: f.title }),
+    ]);
+    const card = el("div", { cls: `finding ${f.severity}` }, [top, el("div", { cls: "loc", text: f.location })]);
+    if (f.evidence) card.appendChild(el("pre", { text: f.evidence }));
+    if (f.explanation) card.appendChild(el("p", { text: f.explanation }));
+    if (f.recommendation) {
+      card.appendChild(el("p", { cls: "rec" }, [el("b", { text: "Fix: " }), document.createTextNode(f.recommendation)]));
+    }
+    if (f.source === "ai") {
+      card.appendChild(el("p", { cls: "meta", text: `AI-generated (confidence ${f.confidence.toFixed(2)}). Verify before acting.` }));
+    }
+    box.appendChild(card);
+  }
+}
+
+function renderFilter(counts) {
+  const bar = $("filter");
+  bar.replaceChildren();
+  const options = ["all", ...SEVERITIES.filter((s) => counts[s])];
+  for (const opt of options) {
+    const n = opt === "all" ? lastFindings.length : counts[opt];
+    const b = el("button", { cls: opt === activeFilter ? "on" : "", text: `${opt} (${n})` });
+    b.addEventListener("click", () => { activeFilter = opt; renderFilter(counts); renderFindings(); });
+    bar.appendChild(b);
+  }
+}
+
+function renderResults(data) {
+  const names = { demo: "Demo pull request", local: "Your changes vs main", paste: "Pasted diff" };
+  $("resultsTitle").textContent = `Results: ${names[data.source]} (${data.files_changed} file(s) changed)`;
+  $("tiles").replaceChildren(...SEVERITIES.map((s) =>
+    el("div", { cls: `tile ${s}` }, [el("div", { cls: "n", text: String(data.counts[s]) }), el("div", { cls: "l", text: s })])));
+  let meta = `AI review: ${data.ai.status.replaceAll("`", "").replace("completed with fake", "completed (scripted demo AI)")}`;
+  if (data.ai.files_reviewed) meta += ` · ${data.ai.files_reviewed} file(s) reviewed`;
+  const dropped = Object.entries(data.ai.dropped);
+  if (dropped.length) meta += ` · AI findings rejected: ${dropped.map(([k, v]) => `${k.replaceAll("_", " ")} ${v}`).join(", ")}`;
+  $("aiMeta").textContent = meta;
+  lastFindings = data.findings; activeFilter = "all";
+  renderFilter(data.counts); renderFindings();
+  $("results").classList.remove("hidden");
+
+  $("checksPanel").classList.toggle("hidden", !data.checks.length);
+  $("checks").replaceChildren(...data.checks.map((c) => {
+    const ok = c.status === "passed";
+    return el("tr", {}, [el("td", { text: c.name }), el("td", { cls: ok ? "ok" : "bad", text: ok ? "✔ passed" : `✖ ${c.status}` }),
+                         el("td", { text: c.summary })]);
+  }));
+
+  $("skippedPanel").classList.toggle("hidden", !data.skipped.length);
+  $("skippedTitle").textContent = `${data.skipped.length} file(s) not reviewed`;
+  $("skipped").replaceChildren(...data.skipped.map((s) => el("tr", {}, [el("td", { text: s.path }), el("td", { text: s.reason })])));
+}
+
+$("reviewBtn").addEventListener("click", async () => {
+  showError("");
+  const btn = $("reviewBtn");
+  busy(btn, "Reviewing…");
+  try {
+    renderResults(await api("/api/review", { source: selected("source"), ai: selected("ai"), diff: $("diff").value }));
+    $("results").scrollIntoView({ behavior: "smooth", block: "start" });
+  } catch (e) { showError(e.message); } finally { done(btn); }
+});
+
+$("testsBtn").addEventListener("click", async () => {
+  showError("");
+  const btn = $("testsBtn");
+  busy(btn, "Running tests…");
+  try {
+    const r = await api("/api/tests");
+    $("testsSummary").replaceChildren(el("span", { cls: r.passed ? "ok" : "bad",
+      text: `${r.passed ? "✔" : "✖"} ${r.summary || (r.passed ? "All tests passed" : "Tests failed")}` }));
+    $("testsOutput").textContent = r.output;
+    $("testsPanel").classList.remove("hidden");
+    $("testsPanel").scrollIntoView({ behavior: "smooth", block: "start" });
+  } catch (e) { showError(e.message); } finally { done(btn); }
+});
+
+api("/api/info").then((info) => {
+  if (info.provider === "fake") { $("providerHint").textContent = "No real provider configured"; }
+  else {
+    $("providerHint").textContent = info.key_present
+      ? `${info.provider} · ${info.model}`
+      : `${info.provider} · ${info.model} (no ${info.key_name} found; will report unavailable)`;
+  }
+  if (!info.demo_available) {
+    document.querySelector('input[name="source"][value="demo"]').disabled = true;
+    document.querySelector('input[name="source"][value="local"]').checked = true;
+  }
+  syncControls();
+}).catch((e) => showError(e.message));
+syncControls();
+</script>
+</body>
+</html>

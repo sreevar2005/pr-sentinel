@@ -16,19 +16,16 @@ from collections import Counter
 from pathlib import Path
 
 from pr_sentinel import __version__
-from pr_sentinel.ai.anthropic_provider import AnthropicProvider
-from pr_sentinel.ai.fake_provider import FakeProvider
-from pr_sentinel.ai.gemini_provider import GeminiProvider
-from pr_sentinel.ai.provider import ProviderError, ReviewProvider
+from pr_sentinel.ai.factory import provider_factory
+from pr_sentinel.ai.provider import ProviderError
 from pr_sentinel.checks import CheckRunner
-from pr_sentinel.config import ConfigError, SentinelConfig, load_config
+from pr_sentinel.config import ConfigError, load_config
 from pr_sentinel.diff import parse_unified_diff
 from pr_sentinel.envfile import load_env_file
 from pr_sentinel.github import GitHubClient, GitHubError
 from pr_sentinel.models import ChecksArtifact
 from pr_sentinel.pipeline import (
     PipelineAbort,
-    ProviderFactory,
     ReviewPipeline,
     analyze,
     load_artifact,
@@ -48,31 +45,6 @@ def _setup_logging(verbose: bool) -> None:
     # HTTP client debug logs can include request headers; keep them quiet even with -v.
     for noisy in ("httpx", "httpx2", "httpcore", "anthropic", "google_genai"):
         logging.getLogger(noisy).setLevel(logging.WARNING)
-
-
-def _provider_factory(config: SentinelConfig, fake_response: Path | None = None) -> ProviderFactory:
-    ai = config.review.ai
-
-    def build() -> ReviewProvider:
-        if ai.provider == "fake" or fake_response is not None:
-            return FakeProvider.from_file(fake_response) if fake_response else FakeProvider()
-        if ai.provider == "gemini":
-            return GeminiProvider(
-                api_key=os.environ.get("GEMINI_API_KEY", ""),
-                model=ai.model_name,
-                timeout_seconds=ai.request_timeout_seconds,
-                max_retries=ai.max_retries,
-            )
-        return AnthropicProvider(
-            api_key=os.environ.get("ANTHROPIC_API_KEY", ""),
-            model=ai.model_name,
-            effort=ai.effort,
-            timeout_seconds=ai.request_timeout_seconds,
-            max_retries=ai.max_retries,
-            refusal_fallback=ai.refusal_fallback,
-        )
-
-    return build
 
 
 def _write_step_summary(markdown: str) -> None:
@@ -111,7 +83,7 @@ def cmd_review(args: argparse.Namespace) -> int:
         return 2
     gh = GitHubClient(token, repo, os.environ.get("GITHUB_API_URL", "https://api.github.com"))
     try:
-        pipeline = ReviewPipeline(gh, config, _provider_factory(config), bot_login=args.bot_login)
+        pipeline = ReviewPipeline(gh, config, provider_factory(config), bot_login=args.bot_login)
         outcome = pipeline.run(read_event(args.event_path), args.artifact_dir, dry_run=args.dry_run)
     except PipelineAbort as exc:
         log.info("nothing to do: %s", exc)
@@ -142,7 +114,7 @@ def cmd_review_local(args: argparse.Namespace) -> int:
     result = analyze(
         files,
         config,
-        _provider_factory(config, args.fake_response),
+        provider_factory(config, args.fake_response),
         check_findings=[f for c in checks for f in c.findings] if checks else [],
         pr_title=args.title,
     )
@@ -180,6 +152,13 @@ def cmd_review_local(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_gui(args: argparse.Namespace) -> int:
+    from pr_sentinel.gui import serve  # imported lazily: only this command needs the web server
+
+    serve(Path.cwd(), args.config, args.port, open_browser=not args.no_browser)
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
         prog="pr-sentinel", description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
@@ -214,6 +193,11 @@ def build_parser() -> argparse.ArgumentParser:
     rl.add_argument("--format", choices=["markdown", "json"], default="markdown")
     rl.add_argument("--show-inline", action="store_true")
     rl.set_defaults(func=cmd_review_local)
+
+    gu = sub.add_parser("gui", help="open the local web GUI in your browser")
+    gu.add_argument("--port", type=int, default=8765)
+    gu.add_argument("--no-browser", action="store_true", help="print the URL instead of opening it")
+    gu.set_defaults(func=cmd_gui)
     return p
 
 

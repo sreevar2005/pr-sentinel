@@ -43,6 +43,12 @@ Details: [architecture and threat model](docs/architecture.md).
 
 ## Quick start
 
+**Windows:** double-click `run.bat`. It installs dependencies and opens the PR Sentinel app in your
+browser, where you can review the demo PR, your own changes, or a pasted diff, and run the tests.
+On any OS the same app starts with `uv run pr-sentinel gui`.
+
+From a terminal:
+
 ```bash
 uv sync
 uv run pytest
@@ -71,7 +77,8 @@ src/pr_sentinel/
   ai/                          provider interface, Claude provider, prompt, schema, grounding
   github.py                    REST client: reads + COMMENT review + summary comment, nothing else
   report.py pipeline.py cli.py rendering/sanitisation, orchestration, CLI
-tests/                         145 tests: unit, provider stubs, mock-GitHub integration, workflow policy
+  gui.py gui_static/           local web app (127.0.0.1 only, per-launch token, strict CSP)
+tests/                         153 tests: unit, provider stubs, GUI, mock-GitHub integration, workflow policy
 examples/demo/                 sample PR, scripted model output, sample checks artifact
 ```
 

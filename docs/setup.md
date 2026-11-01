@@ -5,9 +5,18 @@
 ```bash
 # Prerequisites: Python 3.12+, uv (https://docs.astral.sh/uv/)
 uv sync                      # creates .venv from uv.lock (hash-verified)
-uv run pytest                # 145 tests
+uv run pytest                # 153 tests
 uv run ruff check . && uv run ruff format --check . && uv run mypy
 ```
+
+Open the local app (Windows: double-click `run.bat`):
+
+```bash
+uv run pr-sentinel gui            # opens http://127.0.0.1:8765 in your browser
+```
+
+It reviews the demo PR, your changes against `main`, or a pasted diff, and can run the tests.
+It listens on 127.0.0.1 only and every API call needs a token generated at launch.
 
 Review a diff offline, with no API key and no GitHub access:
 
