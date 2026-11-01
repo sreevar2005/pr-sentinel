@@ -49,17 +49,28 @@ class ForkPolicy(StrEnum):
     NEVER = "never"
 
 
+DEFAULT_MODELS = {
+    "anthropic": "claude-opus-5-5",
+    "gemini": "gemini-flash-latest",  # alias for the current Flash model; pinned versions get retired
+    "fake": "fake",
+}
+
+
 class AIConfig(_Strict):
     enabled: bool = True
-    provider: Literal["anthropic", "fake"] = "anthropic"
-    model: str = "claude-opus-5-5"
-    effort: Literal["low", "medium", "high", "xhigh", "max"] = "high"
+    provider: Literal["anthropic", "gemini", "fake"] = "anthropic"
+    model: str | None = None  # None = the provider's default (DEFAULT_MODELS)
+    effort: Literal["low", "medium", "high", "xhigh", "max"] = "high"  # Anthropic only
     refusal_fallback: bool = True
     min_confidence: float = Field(default=0.7, ge=0.0, le=1.0)
     max_findings: int = Field(default=15, ge=0, le=50)
     request_timeout_seconds: float = Field(default=240, ge=10, le=900)
     max_retries: int = Field(default=3, ge=0, le=8)
     max_output_tokens: int = Field(default=16000, ge=1024, le=32000)
+
+    @property
+    def model_name(self) -> str:
+        return self.model or DEFAULT_MODELS[self.provider]
 
 
 class Limits(_Strict):

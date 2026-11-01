@@ -10,7 +10,12 @@ def test_missing_file_gives_secure_defaults(tmp_path: Path) -> None:
     cfg = load_config(tmp_path / "absent.yml")
     assert cfg.review.forks is ForkPolicy.REQUIRE_LABEL
     assert cfg.review.ai.min_confidence == 0.7
-    assert cfg.review.ai.model == "claude-opus-5-5"
+    assert cfg.review.ai.model_name == "claude-opus-5-5"
+
+
+def test_model_default_follows_provider() -> None:
+    cfg = SentinelConfig.model_validate({"review": {"ai": {"provider": "gemini"}}})
+    assert cfg.review.ai.model_name == "gemini-flash-latest"
 
 
 def test_repository_config_is_valid() -> None:

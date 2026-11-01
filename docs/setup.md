@@ -5,7 +5,7 @@
 ```bash
 # Prerequisites: Python 3.12+, uv (https://docs.astral.sh/uv/)
 uv sync                      # creates .venv from uv.lock (hash-verified)
-uv run pytest                # 128 tests
+uv run pytest                # 145 tests
 uv run ruff check . && uv run ruff format --check . && uv run mypy
 ```
 
@@ -21,8 +21,9 @@ Review your own branch with the real model:
 
 ```bash
 git diff origin/main...HEAD > /tmp/pr.diff
-export ANTHROPIC_API_KEY=...   # never commit this
-uv run pr-sentinel review-local --diff /tmp/pr.diff --provider anthropic
+# Put your key in .env (git-ignored) as GEMINI_API_KEY=... or ANTHROPIC_API_KEY=...
+# The CLI loads only those two names from .env, and never inside GitHub Actions.
+uv run pr-sentinel review-local --diff /tmp/pr.diff --provider gemini
 ```
 
 Exit codes: `0` success or nothing to do, `1` runtime/API failure (or failing checks for
@@ -46,7 +47,9 @@ that project's test and lint commands.
 ### GitHub configuration
 
 1. **Secret:** Settings → Secrets and variables → Actions → New repository secret
-   `ANTHROPIC_API_KEY`. Without it, the review still runs and posts deterministic findings,
+   `GEMINI_API_KEY` (if `review.ai.provider` is `gemini`, the default here) or
+   `ANTHROPIC_API_KEY` (if `anthropic`). Gemini needs billing enabled on the Google project
+   unless that project has free-tier access. Without a working key, the review still runs and posts deterministic findings,
    and the summary states the AI review was unavailable.
 2. **Actions permissions:** Settings → Actions → General
    - Workflow permissions: **Read repository contents** (the workflows request what they need).
@@ -75,7 +78,9 @@ once both workflow files are merged into `main`.
 | `checks[].run` | — | argv list or string (split with `shlex`; never run through a shell) |
 | `checks[].timeout_seconds` | 600 | per-check timeout |
 | `review.ai.enabled` | true | turn AI review off entirely |
-| `review.ai.model` / `effort` | `claude-opus-5-5` / `high` | model and reasoning effort |
+| `review.ai.provider` | `anthropic` (this repo: `gemini`) | `gemini`, `anthropic`, or `fake` |
+| `review.ai.model` | per provider: `gemini-flash-latest` / `claude-opus-5-5` | model name |
+| `review.ai.effort` | `high` | reasoning effort (Anthropic only) |
 | `review.ai.min_confidence` | 0.7 | drop AI findings below this |
 | `review.ai.max_findings` | 15 | cap after ranking |
 | `review.ai.refusal_fallback` | true | server-side fallback if the model declines a chunk |

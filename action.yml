@@ -19,7 +19,10 @@ inputs:
     description: Token used to read the PR and post the review (review mode) or download artifacts
     default: ${{ github.token }}
   anthropic-api-key:
-    description: Model provider API key (review mode only). Leave empty to run deterministic checks only.
+    description: Anthropic API key, used when `review.ai.provider` is `anthropic` (review mode only)
+    default: ""
+  gemini-api-key:
+    description: Google AI Studio API key, used when `review.ai.provider` is `gemini` (review mode only)
     default: ""
   run-id:
     description: ID of the checks workflow run whose artifact to download (review mode)
@@ -103,6 +106,7 @@ runs:
         CONFIG: ${{ inputs.config }}
         GITHUB_TOKEN: ${{ inputs.github-token }}
         ANTHROPIC_API_KEY: ${{ inputs.anthropic-api-key }}
+        GEMINI_API_KEY: ${{ inputs.gemini-api-key }}
       run: |
         "$GITHUB_ACTION_PATH/.venv/bin/pr-sentinel" --config "$CONFIG" review \
           --event-path "$GITHUB_EVENT_PATH" --artifact-dir "$RUNNER_TEMP/sentinel-in"

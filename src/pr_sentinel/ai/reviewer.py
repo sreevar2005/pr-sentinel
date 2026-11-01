@@ -166,7 +166,7 @@ class AIReviewer:
         self._limits = limits
 
     def review(self, files: list[FileDiff], pr_title: str = "", pr_body: str = "") -> AIReviewResult:
-        result = AIReviewResult(model=self._config.model)
+        result = AIReviewResult(model=self._config.model_name)
         chunks, result.skipped = build_chunks(files, self._limits)
         result.chunks_total = len(chunks)
         candidates: list[Finding] = []

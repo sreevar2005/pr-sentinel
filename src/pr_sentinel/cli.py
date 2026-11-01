@@ -18,10 +18,12 @@ from pathlib import Path
 from pr_sentinel import __version__
 from pr_sentinel.ai.anthropic_provider import AnthropicProvider
 from pr_sentinel.ai.fake_provider import FakeProvider
+from pr_sentinel.ai.gemini_provider import GeminiProvider
 from pr_sentinel.ai.provider import ProviderError, ReviewProvider
 from pr_sentinel.checks import CheckRunner
 from pr_sentinel.config import ConfigError, SentinelConfig, load_config
 from pr_sentinel.diff import parse_unified_diff
+from pr_sentinel.envfile import load_env_file
 from pr_sentinel.github import GitHubClient, GitHubError
 from pr_sentinel.models import ChecksArtifact
 from pr_sentinel.pipeline import (
@@ -44,7 +46,7 @@ def _setup_logging(verbose: bool) -> None:
         stream=sys.stderr,
     )
     # HTTP client debug logs can include request headers; keep them quiet even with -v.
-    for noisy in ("httpx", "httpx2", "httpcore", "anthropic"):
+    for noisy in ("httpx", "httpx2", "httpcore", "anthropic", "google_genai"):
         logging.getLogger(noisy).setLevel(logging.WARNING)
 
 
@@ -54,9 +56,16 @@ def _provider_factory(config: SentinelConfig, fake_response: Path | None = None)
     def build() -> ReviewProvider:
         if ai.provider == "fake" or fake_response is not None:
             return FakeProvider.from_file(fake_response) if fake_response else FakeProvider()
+        if ai.provider == "gemini":
+            return GeminiProvider(
+                api_key=os.environ.get("GEMINI_API_KEY", ""),
+                model=ai.model_name,
+                timeout_seconds=ai.request_timeout_seconds,
+                max_retries=ai.max_retries,
+            )
         return AnthropicProvider(
             api_key=os.environ.get("ANTHROPIC_API_KEY", ""),
-            model=ai.model,
+            model=ai.model_name,
             effort=ai.effort,
             timeout_seconds=ai.request_timeout_seconds,
             max_retries=ai.max_retries,
@@ -122,8 +131,11 @@ def cmd_review(args: argparse.Namespace) -> int:
 
 def cmd_review_local(args: argparse.Namespace) -> int:
     config = load_config(args.config)
-    if args.provider:
-        config.review.ai.provider = args.provider
+    ai = config.review.ai
+    if args.provider and args.provider != ai.provider:
+        ai.provider, ai.model = args.provider, None  # a model name from another provider is meaningless
+    if args.model:
+        ai.model = args.model
     files = parse_unified_diff(args.diff.read_text(encoding="utf-8"))
     artifact, note = load_artifact(args.checks_dir, config.review.limits.max_artifact_bytes)
     checks = artifact.checks if artifact else None
@@ -195,7 +207,8 @@ def build_parser() -> argparse.ArgumentParser:
     rl = sub.add_parser("review-local", help="review a local unified diff")
     rl.add_argument("--diff", type=Path, required=True)
     rl.add_argument("--checks-dir", type=Path, help="directory containing checks.json")
-    rl.add_argument("--provider", choices=["anthropic", "fake"])
+    rl.add_argument("--provider", choices=["anthropic", "gemini", "fake"])
+    rl.add_argument("--model", help="override the configured model")
     rl.add_argument("--fake-response", type=Path, help="canned model JSON for the fake provider")
     rl.add_argument("--title", default="")
     rl.add_argument("--format", choices=["markdown", "json"], default="markdown")
@@ -207,6 +220,9 @@ def build_parser() -> argparse.ArgumentParser:
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     _setup_logging(args.verbose)
+    loaded = load_env_file(Path(".env"))
+    if loaded:
+        log.info("loaded %s from .env", ", ".join(loaded))  # names only, never values
     # Reports contain emoji; legacy Windows consoles default to a non-UTF-8 code page.
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8")

@@ -27,6 +27,14 @@ def fake_aws_key() -> str:
     return "AKIA" + "Q3XJ7PLM2RZ8TB4N"
 
 
+@pytest.fixture(autouse=True)
+def _no_local_env_file(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Never let the developer's real .env (and API keys) leak into tests."""
+    monkeypatch.setattr("pr_sentinel.cli.load_env_file", lambda _path: [])
+    for key in ("GEMINI_API_KEY", "ANTHROPIC_API_KEY"):
+        monkeypatch.delenv(key, raising=False)
+
+
 @pytest.fixture
 def demo_dir() -> Path:
     return DEMO

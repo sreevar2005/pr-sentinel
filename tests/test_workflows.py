@@ -103,7 +103,7 @@ def test_action_runs_scanners_only_in_checks_mode_and_secrets_only_in_review_mod
     steps = all_steps(load(ACTION))
     for step in steps:
         env = step.get("env", {}) or {}
-        if "ANTHROPIC_API_KEY" in env:
+        if {"ANTHROPIC_API_KEY", "GEMINI_API_KEY"} & set(env):
             assert step.get("if") == "inputs.mode == 'review'"
         if "install-scanners" in step.get("run", "") or "run-checks" in step.get("run", ""):
             assert step.get("if") == "inputs.mode == 'checks'"

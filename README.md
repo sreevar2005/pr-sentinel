@@ -1,7 +1,7 @@
 ﻿# PR Sentinel
 
 Advisory pull request review for GitHub. PR Sentinel runs your tests and scanners, applies
-deterministic security rules to the diff, asks a model for the bugs rules can't see, and posts
+deterministic security rules to the diff, asks a model (Gemini or Claude) for the bugs rules can't see, and posts
 only findings it can tie to a real changed line. It never approves, requests changes, or merges.
 
 ```
@@ -71,7 +71,7 @@ src/pr_sentinel/
   ai/                          provider interface, Claude provider, prompt, schema, grounding
   github.py                    REST client: reads + COMMENT review + summary comment, nothing else
   report.py pipeline.py cli.py rendering/sanitisation, orchestration, CLI
-tests/                         128 tests: unit, provider stub, mock-GitHub integration, workflow policy
+tests/                         145 tests: unit, provider stubs, mock-GitHub integration, workflow policy
 examples/demo/                 sample PR, scripted model output, sample checks artifact
 ```
 

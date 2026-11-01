@@ -25,7 +25,7 @@ flowchart LR
     end
     subgraph T["Stage 2: PR Sentinel / Review (TRUSTED)"]
         direction TB
-        T1["on: workflow_run<br/>token: contents:read, pull-requests:write, actions:read<br/>secret: ANTHROPIC_API_KEY"]
+        T1["on: workflow_run<br/>token: contents:read, pull-requests:write, actions:read<br/>secret: GEMINI_API_KEY or ANTHROPIC_API_KEY"]
         T2["checkout DEFAULT branch<br/>(reviewer code + config)"]
         T3["validate artifact (size, schema, head SHA)"]
         T4["fetch diff via REST API"]
@@ -82,14 +82,15 @@ visible rather than silent.
 
 `ReviewProvider.complete(ModelRequest) -> ModelResponse` (JSON text plus usage). Prompting,
 validation and grounding live outside the provider, so a replacement cannot weaken them.
-Shipped implementations: `AnthropicProvider` (Claude via the Messages API with structured
+Shipped implementations: `GeminiProvider` (Gemini API via `google-genai`, JSON-schema
+structured output, SDK retries), `AnthropicProvider` (Claude via the Messages API with structured
 outputs, adaptive thinking, configurable effort, server-side refusal fallback) and
 `FakeProvider` (tests, dry runs, the offline demo). Adding another provider is one class plus
 one branch in `cli._provider_factory`.
 
 ## Threat model
 
-Assets: repository write access, the `ANTHROPIC_API_KEY`, maintainers' attention, API budget.
+Assets: repository write access, the model API key, maintainers' attention, API budget.
 Attacker: anyone who can open a PR, including from a fork, controlling all PR content (code,
 file names, PR title/body, commit messages, and the PR's copies of workflow files and config).
 

@@ -43,4 +43,6 @@ jobs:
         with:
           mode: review
           run-id: ${{ github.event.workflow_run.id }}
+          # Only the key for the configured provider is needed; a missing key degrades to rules-only.
           anthropic-api-key: ${{ secrets.ANTHROPIC_API_KEY }}
+          gemini-api-key: ${{ secrets.GEMINI_API_KEY }}
