@@ -1,0 +1,18 @@
+# Keeps SHA-pinned actions and the uv lockfile current. Scanner binaries in
+# scripts/install-scanners.sh are pinned by checksum and must be bumped by hand.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directories: ["/", "/.github/workflows"]
+    schedule:
+      interval: weekly
+    groups:
+      actions:
+        patterns: ["*"]
+  - package-ecosystem: uv
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      python:
+        patterns: ["*"]

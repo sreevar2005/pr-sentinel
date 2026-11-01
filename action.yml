@@ -1,0 +1,108 @@
+name: PR Sentinel
+description: >-
+  Advisory pull request review. `checks` mode runs tests and scanners in the untrusted
+  pull_request job; `review` mode posts grounded findings from the trusted workflow_run job.
+  Never approves, requests changes, or merges.
+author: PR Sentinel contributors
+branding:
+  icon: shield
+  color: blue
+
+inputs:
+  mode:
+    description: "`checks` (untrusted pull_request job) or `review` (trusted workflow_run job)"
+    required: true
+  config:
+    description: Path to the PR Sentinel config file, relative to the workspace
+    default: .github/pr-sentinel.yml
+  github-token:
+    description: Token used to read the PR and post the review (review mode) or download artifacts
+    default: ${{ github.token }}
+  anthropic-api-key:
+    description: Model provider API key (review mode only). Leave empty to run deterministic checks only.
+    default: ""
+  run-id:
+    description: ID of the checks workflow run whose artifact to download (review mode)
+    default: ""
+  artifact-name:
+    description: Name of the checks artifact
+    default: pr-sentinel-checks
+
+runs:
+  using: composite
+  steps:
+    - name: Validate inputs
+      shell: bash
+      env:
+        MODE: ${{ inputs.mode }}
+        EVENT: ${{ github.event_name }}
+      run: |
+        case "$MODE:$EVENT" in
+          checks:pull_request) ;;
+          review:workflow_run) ;;
+          *) echo "::error::mode '$MODE' is not allowed on '$EVENT' (checks->pull_request, review->workflow_run)"; exit 1 ;;
+        esac
+
+    - name: Set up uv
+      uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+      with:
+        # No shared cache: a cache written by the untrusted job must never be restored into the trusted one.
+        enable-cache: false
+
+    - name: Install PR Sentinel (locked, hash-verified)
+      shell: bash
+      run: uv sync --frozen --no-dev --project "$GITHUB_ACTION_PATH" --quiet
+
+    # ---- checks mode: untrusted PR code, read-only token, no secrets -----------------------
+
+    - name: Install scanners (pinned versions, verified checksums)
+      if: inputs.mode == 'checks'
+      shell: bash
+      run: bash "$GITHUB_ACTION_PATH/scripts/install-scanners.sh" "$RUNNER_TEMP/sentinel-bin"
+
+    - name: Run checks
+      if: inputs.mode == 'checks'
+      shell: bash
+      env:
+        CONFIG: ${{ inputs.config }}
+        PR_NUMBER: ${{ github.event.pull_request.number }}
+        HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        BASE_SHA: ${{ github.event.pull_request.base.sha }}
+      run: |
+        export PATH="$RUNNER_TEMP/sentinel-bin:$PATH"
+        "$GITHUB_ACTION_PATH/.venv/bin/pr-sentinel" --config "$CONFIG" run-checks \
+          --output "$RUNNER_TEMP/sentinel-out/checks.json" \
+          --pr-number "$PR_NUMBER" --head-sha "$HEAD_SHA" --base-sha "$BASE_SHA" \
+          --repo-dir "$GITHUB_WORKSPACE"
+
+    - name: Upload checks artifact
+      if: inputs.mode == 'checks' && always()
+      uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+      with:
+        name: ${{ inputs.artifact-name }}
+        path: ${{ runner.temp }}/sentinel-out/checks.json
+        retention-days: 3
+        if-no-files-found: warn
+
+    # ---- review mode: trusted base-branch code; PR content is only ever read as data -------
+
+    - name: Download checks artifact (untrusted data)
+      if: inputs.mode == 'review'
+      continue-on-error: true  # a missing artifact degrades the summary, it does not stop the review
+      uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+      with:
+        name: ${{ inputs.artifact-name }}
+        path: ${{ runner.temp }}/sentinel-in
+        run-id: ${{ inputs.run-id }}
+        github-token: ${{ inputs.github-token }}
+
+    - name: Review pull request
+      if: inputs.mode == 'review'
+      shell: bash
+      env:
+        CONFIG: ${{ inputs.config }}
+        GITHUB_TOKEN: ${{ inputs.github-token }}
+        ANTHROPIC_API_KEY: ${{ inputs.anthropic-api-key }}
+      run: |
+        "$GITHUB_ACTION_PATH/.venv/bin/pr-sentinel" --config "$CONFIG" review \
+          --event-path "$GITHUB_EVENT_PATH" --artifact-dir "$RUNNER_TEMP/sentinel-in"

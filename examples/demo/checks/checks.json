@@ -1,0 +1,75 @@
+{
+  "schema_version": 1,
+  "pr_number": 42,
+  "head_sha": "8510700c0ffee8510700c0ffee8510700c0ffee0",
+  "checks": [
+    {
+      "name": "tests",
+      "kind": "command",
+      "status": "passed",
+      "duration_seconds": 14.2,
+      "exit_code": 0,
+      "summary": "passed",
+      "output_tail": "",
+      "findings": []
+    },
+    {
+      "name": "lint",
+      "kind": "command",
+      "status": "passed",
+      "duration_seconds": 1.1,
+      "exit_code": 0,
+      "summary": "passed",
+      "output_tail": "",
+      "findings": []
+    },
+    {
+      "name": "secrets",
+      "kind": "gitleaks",
+      "status": "failed",
+      "duration_seconds": 0.8,
+      "exit_code": 0,
+      "summary": "1 potential secret(s) in PR commits",
+      "output_tail": "",
+      "findings": [
+        {
+          "source": "check",
+          "rule_id": "gitleaks-generic-api-key",
+          "category": "secret",
+          "severity": "critical",
+          "title": "Secret detected by gitleaks: Detected a Generic API Key, potentially exposing access to various services and sensitive operations.",
+          "path": "app/export.py",
+          "line": 6,
+          "evidence": "EXPORT_SIGNING_SECRET = \"REDACTED\"",
+          "explanation": "The secret exists in the PR's commit history, even if a later commit removed it.",
+          "recommendation": "Revoke and rotate the credential; rewriting history does not un-leak it.",
+          "confidence": 1.0
+        }
+      ]
+    },
+    {
+      "name": "dependencies",
+      "kind": "osv",
+      "status": "failed",
+      "duration_seconds": 3.4,
+      "exit_code": 0,
+      "summary": "1 vulnerable dependenc(ies) introduced by this PR",
+      "output_tail": "",
+      "findings": [
+        {
+          "source": "check",
+          "rule_id": "GHSA-9wx4-h78v-vm56",
+          "category": "dependency",
+          "severity": "medium",
+          "title": "requests@2.31.0: Requests Session object does not verify requests after making first request with verify=False",
+          "path": "requirements.txt",
+          "line": null,
+          "evidence": "PyPI requests 2.31.0",
+          "explanation": "Advisories: GHSA-9wx4-h78v-vm56, CVE-2024-35195",
+          "recommendation": "Upgrade requests to a fixed version (see https://osv.dev/GHSA-9wx4-h78v-vm56).",
+          "confidence": 1.0
+        }
+      ]
+    }
+  ]
+}

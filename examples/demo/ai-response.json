@@ -1,0 +1,59 @@
+{
+  "findings": [
+    {
+      "path": "app/export.py",
+      "line": 25,
+      "category": "security",
+      "severity": "high",
+      "title": "Authorization check lets every non-admin export any organisation",
+      "evidence": "return user.org_id == org.id or user.role != \"admin\"",
+      "explanation": "The `or` makes the check pass for any user whose role is not \"admin\", regardless of organisation. A regular user in org A can export org B's users.",
+      "recommendation": "Require both conditions: `return user.org_id == org.id and user.role == \"admin\"`, and add a test for the cross-org case.",
+      "confidence": 0.93
+    },
+    {
+      "path": "app/export.py",
+      "line": 15,
+      "category": "security",
+      "severity": "high",
+      "title": "SQL injection through org_id",
+      "evidence": "WHERE org_id = '{org_id}'",
+      "explanation": "org_id is interpolated into the SQL text; a value like `x' OR '1'='1` returns every user.",
+      "recommendation": "Use placeholders: conn.execute(\"... WHERE org_id = ? LIMIT ? OFFSET ?\", (org_id, page_size, offset)).",
+      "confidence": 0.95
+    },
+    {
+      "path": "app/auth.py",
+      "line": 10,
+      "category": "bug",
+      "severity": "medium",
+      "title": "Session token not validated",
+      "evidence": "token = request.cookies.get('session')",
+      "explanation": "Hallucinated: this file is not part of the diff.",
+      "recommendation": "n/a",
+      "confidence": 0.8
+    },
+    {
+      "path": "app/export.py",
+      "line": 20,
+      "category": "security",
+      "severity": "critical",
+      "title": "Command injection via os.system",
+      "evidence": "os.system(cmd)",
+      "explanation": "Ungrounded: the quoted code does not exist at this line.",
+      "recommendation": "n/a",
+      "confidence": 0.9
+    },
+    {
+      "path": "app/export.py",
+      "line": 16,
+      "category": "performance",
+      "severity": "low",
+      "title": "fetchall may load a large page into memory",
+      "evidence": "return cur.fetchall()",
+      "explanation": "Speculative: page_size is caller-controlled.",
+      "recommendation": "Consider streaming rows.",
+      "confidence": 0.4
+    }
+  ]
+}

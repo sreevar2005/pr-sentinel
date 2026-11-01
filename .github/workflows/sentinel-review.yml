@@ -1,0 +1,46 @@
+# Stage 2 of 2: TRUSTED. Has the model API key and a token that can comment on PRs.
+#
+# Invariants (enforced by tests/test_workflows.py):
+# * Never checks out, builds, installs, or runs PR code. The checkout below is the default
+#   branch, so the reviewer code and .github/pr-sentinel.yml are the maintainers' versions.
+# * PR content arrives only as data: the diff via the REST API and the checks artifact,
+#   which is size-capped and schema-validated before use.
+# * The token can read contents and write PR comments/reviews. Nothing else.
+name: PR Sentinel / Review
+
+on:
+  workflow_run:
+    workflows: ["PR Sentinel / Checks"]
+    types: [completed]
+
+permissions: {}
+
+concurrency:
+  # Keyed by commit; a run for a superseded commit aborts when it sees the PR head moved.
+  group: sentinel-review-${{ github.event.workflow_run.head_sha }}
+  cancel-in-progress: true
+
+jobs:
+  review:
+    if: >-
+      github.event.workflow_run.event == 'pull_request' &&
+      github.event.workflow_run.conclusion != 'skipped' &&
+      github.event.workflow_run.conclusion != 'cancelled'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      pull-requests: write
+      actions: read  # download the artifact from the checks run
+    steps:
+      - name: Check out default branch (trusted code and config)
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Review pull request
+        uses: ./
+        with:
+          mode: review
+          run-id: ${{ github.event.workflow_run.id }}
+          anthropic-api-key: ${{ secrets.ANTHROPIC_API_KEY }}

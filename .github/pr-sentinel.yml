@@ -1,0 +1,47 @@
+# PR Sentinel configuration. The review job reads this from the DEFAULT BRANCH, so a PR
+# cannot weaken its own review by editing this file (the change takes effect after merge).
+version: 1
+
+# Run by the untrusted checks job. Commands are argv lists (strings are split, never shelled).
+checks:
+  - name: tests
+    run: uv run --frozen pytest -q
+    timeout_seconds: 600
+  - name: lint
+    run: uv run --frozen ruff check .
+    category: lint
+    severity_on_failure: medium
+  - name: types
+    run: uv run --frozen mypy
+    category: lint
+    severity_on_failure: medium
+  - name: workflows
+    run: actionlint
+    category: ci-security
+    severity_on_failure: medium
+  - name: secrets
+    kind: gitleaks
+  - name: dependencies
+    kind: osv
+
+review:
+  ai:
+    enabled: true
+    provider: anthropic
+    model: claude-opus-5-5
+    effort: high
+    refusal_fallback: true
+    min_confidence: 0.7
+    max_findings: 15
+  limits:
+    max_files: 150
+    max_chunk_chars: 120000
+    max_chunks: 4
+  inline_min_severity: medium
+  max_inline_comments: 20
+  forks: require-label
+  fork_label: "sentinel:review"
+  exclude:
+    # Demo fixtures and tests deliberately contain fake secrets and prompt-injection strings.
+    - "examples/**"
+    - "tests/**"

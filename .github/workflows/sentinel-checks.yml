@@ -1,0 +1,35 @@
+# Stage 1 of 2: UNTRUSTED. Runs PR code (tests, linters, scanners).
+#
+# `pull_request` from a fork gets a read-only GITHUB_TOKEN and no repository secrets, so
+# whatever the PR code does here, it cannot write to the repo or steal credentials.
+# Results leave this job only as an artifact, which stage 2 treats as untrusted data.
+name: PR Sentinel / Checks
+
+on:
+  pull_request:
+    types: [opened, reopened, synchronize, ready_for_review, labeled]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: sentinel-checks-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  checks:
+    # Re-run on `labeled` only for the maintainer opt-in label used to enable AI on fork PRs.
+    if: github.event.action != 'labeled' || github.event.label.name == 'sentinel:review'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: Check out PR merge commit
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0  # gitleaks scans base..head; osv-scanner diffs against a base worktree
+          persist-credentials: false
+
+      - name: Run PR Sentinel checks
+        uses: ./
+        with:
+          mode: checks

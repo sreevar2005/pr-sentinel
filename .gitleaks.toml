@@ -1,0 +1,8 @@
+title = "PR Sentinel gitleaks config"
+
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "Intentional fake credentials in demo fixtures and tests"
+paths = ['''^examples/''', '''^tests/''']
