@@ -1,0 +1,15 @@
+# DEMO ONLY: intentionally unsafe so PR Sentinel has something to flag.
+# Manual trigger only, so the unsafe step never runs automatically.
+name: release
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  notes:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Draft release notes
+        run: echo "Release notes for ${{ github.event.pull_request.title }}" >> notes.md
+      - uses: example-org/publish-notes@v2
