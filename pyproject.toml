@@ -6,10 +6,10 @@ readme = "README.md"
 license = "MIT"
 requires-python = ">=3.12"
 dependencies = [
-    "anthropic>=1.0,<2",
-    "google-genai>=1.30,<2",
+    "anthropic>=2.5.0,<3",
+    "google-genai>=2.34.0,<3",
     "httpx2>=2.16,<3",
-    "pydantic>=2.7,<3",
+    "pydantic>=2.14.3,<3",
     "pyyaml>=6.0,<7",
 ]
 
@@ -22,11 +22,11 @@ dev = [
     "pytest-cov>=5.0",
     "ruff>=0.6",
     "mypy>=1.11",
-    "types-pyyaml>=6.0",
+    "types-pyyaml>=6.0.12.20261103",
 ]
 
 [build-system]
-requires = ["hatchling>=1.25"]
+requires = ["hatchling>=1.33.0"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
